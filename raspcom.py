@@ -1,14 +1,16 @@
 import urllib2
 import json
 import time 
-energypoints = []
 currentTime = lambda: int(round(time.time()*1000))
 
-startTime = currentTime()
-totalEnergy = 0.0
-latestEnergy = 0.0
-isRunning = False
-timeLeft = 43
+def startDevice():
+	url = "http://192.168.1.5:8083/ZWaveAPI/Run/devices[2].instances[0].SwitchBinary.Set(255)"
+	urllib2.urlopen(url).read()
+	
+
+def stopDevice():
+        url = "http://192.168.1.5:8083/ZWaveAPI/Run/devices[2].instances[0].SwitchBinary.Set(0)"
+	urllib2.urlopen(url).read()
 
 #Get's the Live data from RaZBerry
 def fetchData():
@@ -45,7 +47,6 @@ def createWashRecord():
 
 	washRecord = json.dumps(washRecord)
 
-
 	fo = open("records/"+str(startTime), "w")
 	fo.write(washRecord)
 	fo.close()
@@ -54,22 +55,33 @@ def createWashRecord():
 
 #Reset global variables before recording
 def startRecording():
+	print "Start recording"
 	global totalEnergy
 	totalEnergy = 0.0
 	global energypoints
 	energypoints = []
 	global startTime
-	startTime = 0
+	startTime = currentTime()
+	global isRunning
+	isRunning = True
+
+#
+def stopRecording():
+	print "Stop recording"
+	createWashRecord()
+	global isRunning
+	isRunning = False
 
 
 #get live data: status, time left, current energy
 def getLiveData():
 	global latestEnergy
-
+	global timeLeft
+	global isRunning	
+	
+	timeLeft = 43
 	returnValue = {'isRunning':isRunning, 'timeLeft':timeLeft, 'energy':latestEnergy}
 	return returnValue
 	
 
-getLiveData()
-createWashRecord()
 

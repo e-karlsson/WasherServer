@@ -5,7 +5,9 @@ from pprint import pprint
 
 #lists all files in a folder
 def getFiles(path):
-	return [f for f in listdir(path) if isfile(join(path,f))]
+	files = [f for f in listdir(path) if isfile(join(path,f))]
+	files.sort()
+	return files
 
 #lists the n newest files
 def getLastNFiles(files, amount):
