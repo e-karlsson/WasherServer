@@ -3,14 +3,22 @@ FETCH_RATE = 5
 MONITOR_RATE = 15
 
 #IMPORTS
+import thread
 import time
 import raspcom
 import monitor
+import api
 #BODY
 running = False
 
 
 def startServer():
+	print "starting main server"
+	try:
+		thread.start_new_thread(api.startAPIServer, ())
+	except:
+		print "Couldn't start API thread"
+	
 	global running
 	while True:
 		if running:
@@ -38,5 +46,4 @@ def setRunning(state):
 	running = state
 	print "Setting device status = %s" % state
 
-startServer()
 
