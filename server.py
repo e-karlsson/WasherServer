@@ -9,6 +9,7 @@ import raspcom
 import monitor
 import api
 import environment
+import push
 #BODY
 
 def startServer():
@@ -47,7 +48,7 @@ def setRunning(state):
 	if state and not running:
 		raspcom.startRecording()
 	elif not state and running:
-		#do push
+		push.deviceStopped()
 		raspcom.stopRecording()
 	print "Setting device status = %s" % state
 	running = state
@@ -62,7 +63,8 @@ def startDeviceWithinTime(time):
 	        thread.start_new_thread(waitingToStart, (time,False,))
         except:
 	        print "Couldn't start wait thread"
-
+	return [time, environment.getPriceAt(time)]
+	
 def startDeviceAtLowestPrice(time):
 	data = environment.startAtCheapest(time)
         try:
@@ -76,6 +78,7 @@ def startDeviceWithWind(time):
                 thread.start_new_thread(waitingToStart, (time,True,))
         except:
                 print "Couldn't start wait thread"
+	return [time, environment.getPriceAt(time)]
 
 
 

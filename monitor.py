@@ -1,5 +1,6 @@
 import time
 import server
+import push
 
 LOW_ENERGY_THRESHOLD = 0.5
 HIGH_ENERGY_THRESHOLD = 2
@@ -27,6 +28,7 @@ def logic(currentW, running):
 			if timing:
 				if timePassed(STOP_TIME_THRESHOLD):
 					server.setRunning(False)
+					push.deviceStopped()
 			else:
 				timing = True
 				startTime = currentTime()	
@@ -37,6 +39,7 @@ def logic(currentW, running):
 			if timing:
 				if timePassed(START_TIME_THRESHOLD):
 					server.setRunning(True)
+					push.reset()
 			else:
 				timing = True
 				startTime = currentTime()

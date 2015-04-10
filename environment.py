@@ -72,4 +72,5 @@ def isWind():
 		data = json.load(jsonfile)
 	return data['isWind']>0
 
-
+def getPriceAt(time):
+	return 12.5

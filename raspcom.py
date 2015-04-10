@@ -1,6 +1,7 @@
 import urllib2
 import json
 import time 
+import environment
 currentTime = lambda: int(round(time.time()*1000))
 
 def startDevice():
@@ -43,7 +44,8 @@ def createEnergyPoint(data, rate):
 def createWashRecord():
 	global energypoints
 	global startTime
-	washRecord = {'startTime':startTime, 'endTime':currentTime(), "totalEnergy":totalEnergy, "points":energypoints}	
+	price = environment.getPriceAt(startTime)
+	washRecord = {'price':price,'startTime':startTime, 'endTime':currentTime(), "totalEnergy":totalEnergy, "points":energypoints}	
 
 	washRecord = json.dumps(washRecord)
 
