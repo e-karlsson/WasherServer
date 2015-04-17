@@ -29,7 +29,7 @@ def loadFile(fileName):
 
 #loads a list of files and returns an array of objects
 def loadJSON(files):
-	return [loadFile(f) for f in files]
+	return {'records':[loadFile(f) for f in files]}
 
 #get all records in a list since time
 def getRecordsSince(time):

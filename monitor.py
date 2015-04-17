@@ -27,7 +27,7 @@ def logic(currentW, running):
 		if currentW < LOW_ENERGY_THRESHOLD:
 			if timing:
 				if timePassed(STOP_TIME_THRESHOLD):
-					server.setRunning(False)
+					server.setState(server.STATE_DONE)
 					push.deviceStopped()
 			else:
 				timing = True
@@ -38,7 +38,7 @@ def logic(currentW, running):
 		if currentW > HIGH_ENERGY_THRESHOLD:
 			if timing:
 				if timePassed(START_TIME_THRESHOLD):
-					server.setRunning(True)
+					server.setState(server.STATE_RUNNING)
 					push.reset()
 			else:
 				timing = True

@@ -2,6 +2,8 @@ import urllib2
 import json
 import time 
 import environment
+import server
+
 currentTime = lambda: int(round(time.time()*1000))
 
 def startDevice():
@@ -45,7 +47,14 @@ def createWashRecord():
 	global energypoints
 	global startTime
 	price = environment.getPriceAt(startTime)
-	washRecord = {'price':price,'startTime':startTime, 'endTime':currentTime(), "totalEnergy":totalEnergy, "points":energypoints}	
+	info = server.getProgramInfo()
+	info['startTime'] = startTime
+	info['endTime'] = currentTime()
+	
+	if len(energypoints) == 0:
+		energypoints = [{'time':currentTime(),'value':0}]
+	
+	washRecord = {'programInfo':info,'price':price, "totalEnergy":totalEnergy, "points":energypoints}	
 
 	washRecord = json.dumps(washRecord)
 
@@ -67,6 +76,7 @@ def startRecording():
 	global isRunning
 	isRunning = True
 
+
 #
 def stopRecording():
 	print "Stop recording"
@@ -74,6 +84,9 @@ def stopRecording():
 	global isRunning
 	isRunning = False
 
+def getLatestEnergy():
+	global latestEnergy
+	return latestEnergy
 
 #get live data: status, time left, current energy
 def getLiveData():
@@ -86,4 +99,6 @@ def getLiveData():
 	return returnValue
 	
 
-
+def init():
+	global latestEnergy
+	latestEnergy = 0

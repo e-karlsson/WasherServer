@@ -1,6 +1,10 @@
 #CONSTANTS
 FETCH_RATE = 5
 MONITOR_RATE = 15
+STATE_OFF = 0
+STATE_SCHEDULE = 1
+STATE_RUNNING = 2
+STATE_DONE = 3
 
 #IMPORTS
 import thread
@@ -13,93 +17,189 @@ import push
 #BODY
 
 def startServer():
-	global running
-	global scheduleId
+	global state
 	print "starting main server"
-	running = False
-	scheduleId = -1
+	state = STATE_OFF
+	setState (STATE_OFF)
+	init()
 	
 	try:
 		thread.start_new_thread(api.startAPIServer, ())
 	except:
 		print "Couldn't start API thread"
+
+	serverLoop()
 	
+def serverLoop():
+	global state
+	global startTime
+	global useWind
+
 	while True:
-		if running:
+		if state == STATE_OFF:
 			data = raspcom.fetchData()
-			print "Device is up. Current energy consumption = %f" %data[1]
-
+			monitor.logic(data[1], False)
+			for x in range (0, MONITOR_RATE):
+				if state == STATE_OFF:
+					time.sleep(1)
+		elif state == STATE_SCHEDULE:
+			data = raspcom.fetchData()
+			monitor.logic(data[1], False)
+			
+			for x in range (0, MONITOR_RATE):
+				if state == STATE_SCHEDULE:	
+					currentMillis = int(round(time.time() * 1000))
+					if currentMillis > startTime:
+						print "Starting the device by schedule"
+						raspcom.startDevice()
+						setState(STATE_RUNNING)
+					elif useWind and environment.isWind():
+						print "Starting the device early with wind"
+						raspcom.startDevice()
+						setState(STATE_RUNNING)
+				time.sleep(1)	
+		elif state == STATE_RUNNING:
+			data = raspcom.fetchData()
 			raspcom.createEnergyPoint(data, FETCH_RATE)
-			monitor.logic(data[1], running)
-			time.sleep(FETCH_RATE)
-		else:
-			print "Device is down"
-			data = raspcom.fetchData()
-			monitor.logic(data[1], running)
-			if not running:
-				time.sleep(MONITOR_RATE)
+			monitor.logic(data[1], True)
+			for x in range (0, FETCH_RATE):
+				if state == STATE_RUNNING:
+					time.sleep(1)
+		elif state == STATE_DONE: 
+			time.sleep(1)
 
+def setState(newState):
+	global state
+	if state == STATE_OFF:
+		if newState == STATE_DONE:
+			return error(state, newState)
+	elif state == STATE_SCHEDULE:
+		if newState == STATE_DONE:
+			return error(state, newState)
+	elif state == STATE_RUNNING:
+		if newState == STATE_SCHEDULE:
+			return error(state, newState)
+	elif state == STATE_DONE:
+		if newState != STATE_OFF:
+			return error(state, newState)
 
-def isRunning():
-	return running
-
-def setRunning(state):
-	global running
-	if state and not running:
+	if newState == STATE_RUNNING and state != newState:
+		printProgram()
 		raspcom.startRecording()
-	elif not state and running:
-		push.deviceStopped()
+	if newState == STATE_DONE and state != newState:
 		raspcom.stopRecording()
-	print "Setting device status = %s" % state
-	running = state
+	if state == STATE_RUNNING and newState == STATE_OFF:
+		raspcom.stopRecording()
+	
+	state = newState
+	print "Changed state to", getNameOf(state)
+	return True
+
+def getState():
+	global state
+	return state
+
+def error(state, newState):
+	print "Can't change from %s to %s" %(getNameOf(state),getNameOf(newState))
+	return False
+
+def getNameOf(state):
+	return ["OFF", "SCHEDULE", "RUNNING", "DONE"][state]
 
 def stopDevice():
-	global scheduleId
-	scheduleId = -1
-	raspcom.stopDevice()
+	if getState() == STATE_RUNNING and setState(STATE_OFF):
+		raspcom.stopDevice()
+		return True
+	if getState() == STATE_SCHEDULE and setState(STATE_OFF):
+		return True
+	return False
 
-def startDeviceWithinTime(time):
-        try:
-	        thread.start_new_thread(waitingToStart, (time,False,))
-        except:
-	        print "Couldn't start wait thread"
-	return [time, environment.getPriceAt(time)]
+def scheduleWith(scheduleTime, washTime, wind, price, name, degree):
+	global startTime
+	global useWind
+	global useLowPrice
+	global programName
+	global programDegree
+	global doneTime
+	global programTime
+
+
+	programTime = washTime/1000/60
+	currentMillis = int(round(time.time() * 1000))
+	if scheduleTime < currentMillis:
+		scheduleTime = currentMillis
+	startTime = scheduleTime
+	doneTime = startTime + washTime
+	useWind = wind
+	useLowPrice = price
+	programName = name
+	programDegree = degree
+
+	return setState(STATE_SCHEDULE)
 	
-def startDeviceAtLowestPrice(time):
+
+def startDeviceWithinTime(time, washTime, name, degree):
+	global startTime
+       	status = scheduleWith(time, washTime, False, False, name, degree)	
+	return [startTime, environment.getPriceAt(startTime), status]
+	
+def startDeviceAtLowestPrice(time, washTime, name, degree):
 	data = environment.startAtCheapest(time)
-        try:
-                thread.start_new_thread(waitingToStart, (data[0],False,))
-        except:
-                print "Couldn't start wait thread"
+	status = scheduleWith(data[0], washTime, False, True, name, degree)
+	data.append(status)
 	return data
 
-def startDeviceWithWind(time):
-        try:
-                thread.start_new_thread(waitingToStart, (time,True,))
-        except:
-                print "Couldn't start wait thread"
-	return [time, environment.getPriceAt(time)]
+def startDeviceWithWind(time, washTime, name, degree):
+	global startTime
+        status = scheduleWith(time, washTime, True, False, name, degree)
+	return [startTime, environment.getPriceAt(startTime),status]
+
+def printProgram():
+	global programTime
+
+	info = getProgramInfo()
+	print "Starting washer!"
+	print "Program name:", info['name']
+	print "Degrees:", info['degree']
+	print "Estimated run time: %d minutes" %programTime
+	print "Using wind?", info['wind']
+	print "Low price?", info['lowPrice']
+
+def pingDone():
+	status = setState(STATE_OFF)
+	return status
+
+def getProgramInfo():
+	global startTime
+	global useWind
+	global useLowPrice
+	global programName
+	global programDegree
+	global doneTime
+	
+	return {'startTime':startTime,'wind':useWind,'lowPrice':useLowPrice,'name':programName,'degree':programDegree,'endTime':doneTime};
+
+def getLiveData():
+	global state
+
+	return {'state':state,'energy':raspcom.getLatestEnergy(),'programInfo':getProgramInfo()}
 
 
-
-def waitingToStart(startTime, useWind):
-	global scheduleId
-	scheduleId += 1
-	scheduleId %= 10
-	myId = scheduleId
-
-	currentMillis = int(round(time.time() * 1000))
-	print "I'll start within %d seconds" % ((startTime - currentMillis)/1000)
-	while (currentMillis < startTime):
+def init():
+	global startTime
+	global useWind
+	global useLowPrice
+	global programName
+	global programDegree
+	global doneTime
+	global programTime
 		
-		if useWind and environment.isWind():
-			print "Wind detected! Starting wash."
-			break
+	startTime = 0
+	useWind = False
+	useLowPrice = False
+	programName = "No Name"
+	programDegree = "0"
+	doneTime = 0
+	programTime = 0
 
-		time.sleep(1)
-		currentMillis = int(round(time.time() * 1000))
-		if myId != scheduleId:
-			print "Abort schedule #",myId
-			return
-	raspcom.startDevice()
-
+	raspcom.init()

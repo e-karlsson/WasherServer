@@ -4,6 +4,7 @@ import json
 import history
 import raspcom
 import server
+import push
 
 PORT_NUMBER = 8080
 WASH_TIME = 45*60*1000
@@ -39,7 +40,10 @@ def handleSet(socket, path, params):
 		handleSettings(socket, params)
 	if paths[0] == "wind":
 		setWind(socket, params)
-
+	if paths[0] == "gcmid":
+		setGcmId(socket, params)
+	if paths[0] == "done":
+		handleDone(socket)
 #handle all get requests
 def handleGet(socket, path, params):
 	paths = path.split("/", path.count("/"))
@@ -63,7 +67,7 @@ def getHistory(socket, params):
 
 #handle get live feed
 def getLive(socket):
-	jData = raspcom.getLiveData()
+	jData = server.getLiveData()
 	sendJSON(socket, jData)
 
 
@@ -85,12 +89,25 @@ def setWind(socket, params):
 		return
 	sendJSON(socket, {'status':'ok'})
 
+def setGcmId(socket, params):
+	if params.get('id'):
+		value = params['id'][0]
+		push.addId(value)
+
+
 #handles stop
 def handleStop(socket):
-	server.setRunning(False)
-	server.stopDevice()
-	sendJSON(socket, {'status':'ok'})
-	return
+	if server.stopDevice():
+		sendJSON(socket, {'status':'ok'})
+	else:
+		sendJSON(socket, {'status':'failed'})
+
+#handle done
+def handleDone(socket):
+	if server.pingDone():
+		sendJSON(socket, {'status':'ok'})
+	else:
+		sendJSON(socket, {'status':'ok'})
 
 #handles settings
 def handleSettings(socket, params):
@@ -113,25 +130,27 @@ def handleSettings(socket, params):
 	
 #handles start
 def handleStart(socket, params):
-	if server.isRunning():
-		sendJSON(socket, {'status':'failed','startAt':-1,'price':-1})
-	elif params.get('washTime'):
+	
+	if params.get('washTime') and params.get('name') and params.get('degree'):
 		washTime = int(params['washTime'][0]) * 60 * 1000
+		name = params['name'][0]
+		degree = params['degree'][0]
 		if params.get('time'):
-			data = server.startDeviceWithinTime(int(params['time'][0]))
-			sendJSON(socket, {'status':'ok','startAt':data[0],'price':data[1]})
-			return
+			data = server.startDeviceWithinTime(int(params['time'][0]), washTime, name, degree)
+			if data[2]:
+				sendJSON(socket, {'status':'ok','startAt':data[0],'price':data[1]})
+				return
 		elif params.get('readyAt'):
 			readyAt = int(params['readyAt'][0])
 			if params.get('useWind'):
-				data = server.startDeviceWithWind(readyAt - washTime)
+				data = server.startDeviceWithWind(readyAt - washTime, washTime, name, degree)
 			elif params.get('lowPrice'):
-				data = server.startDeviceAtLowestPrice(readyAt - washTime)
+				data = server.startDeviceAtLowestPrice(readyAt - washTime, washTime, name, degree)
 			else:
-				data = server.startDeviceWithinTime(readyAt - washTime)
-			
-			sendJSON(socket, {'status':'ok','startAt':data[0],'price':data[1]})
-			return
+				data = server.startDeviceWithinTime(readyAt - washTime, washTime, name, degree)
+			if data[2]:
+				sendJSON(socket, {'status':'ok','startAt':data[0],'price':data[1]})
+				return
 	sendJSON(socket, {'status':'failed','startAt':-1,'price':-1})
 
 #sends json back to caller

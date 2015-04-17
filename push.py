@@ -28,8 +28,9 @@ def deviceStopped():
 				
 
 def sendPush(message):
-
+	pushdata = {'data':{'message':message},'registration_ids':loadIds()}
 	print "Sent Push: ", message
+	print "Push json: ", json.dumps(pushdata)
 
 
 def shouldPush():
@@ -46,6 +47,36 @@ def loadSettings():
 		data = json.load(jsonfile)
 	return data
 
+def removeId(ID):
+	ids = loadIds()
+	if ids.count(ID) != 0:
+		ids.remove(ID)
+		print "Removed %d from GCM ID's" % ID
+	saveIds(ids)
+
+
+def addId(ID):
+	ids = loadIds()
+	if ids.count(ID) == 0:
+		ids.append(ID)
+		print "Addes %d to GCM ID's" % ID
+	saveIds(ids)
+
+def saveIds(ids):
+	data = {'ids':ids}
+	data = json.dumps(data)
+	
+	fo.open('gcm/ids', "w")
+	fo.write(data)
+	fo.close()
+
+
+def loadIds():
+	with open('gcm/ids') as jsonfile:
+		data = json.load(jsonfile)
+	if 'ids' not in data:
+		return []
+	return data['ids']
 
 def waitToRemind(pushTime):
 	while (currentTime() < pushTime):
