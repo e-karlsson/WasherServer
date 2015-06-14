@@ -7,17 +7,17 @@ import server
 currentTime = lambda: int(round(time.time()*1000))
 
 def startDevice():
-	url = "http://192.168.1.5:8083/ZWaveAPI/Run/devices[2].instances[0].SwitchBinary.Set(255)"
+	url = "http://localhost:8083/ZWaveAPI/Run/devices[2].instances[0].SwitchBinary.Set(255)"
 	urllib2.urlopen(url).read()
 	
 
 def stopDevice():
-        url = "http://192.168.1.5:8083/ZWaveAPI/Run/devices[2].instances[0].SwitchBinary.Set(0)"
+        url = "http://localhost:8083/ZWaveAPI/Run/devices[2].instances[0].SwitchBinary.Set(0)"
 	urllib2.urlopen(url).read()
 
 #Get's the Live data from RaZBerry
 def fetchData():
-	url = "http://192.168.1.5:8083/ZWaveAPI/Run/devices[2].instances[0].commandClasses.Meter"
+	url = "http://localhost:8083/ZWaveAPI/Run/devices[2].instances[0].commandClasses.Meter"
 	data = urllib2.urlopen(url).read()
 
 	jdata = json.loads(data)

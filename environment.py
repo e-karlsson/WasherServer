@@ -73,4 +73,44 @@ def isWind():
 	return data['isWind']>0
 
 def getPriceAt(time):
-	return 12.5
+	with open("settings/settings") as jsonfile:
+		data = json.load(jsonfile)
+	if data["static"]:
+		return data["price"]
+
+	cookie_jar = cookielib.CookieJar()
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie_jar))
+	urllib2.install_opener(opener)
+
+	reqTime = datetime.datetime.fromtimestamp(time/1000.0)
+	reqDate = reqTime.strftime("%Y-%m-%d")
+
+	reqHour = reqTime.strftime("%H")
+		
+	#do POST
+	url = 'http://elskling.se/timpriser'
+	values = dict(timpriser=reqDate, seomr='se0123')
+	data = urllib.urlencode(values)
+	req = urllib2.Request(url, data)
+	rsp = urllib2.urlopen(req)
+	content = rsp.read()
+
+	#parse content
+	startIndex = content.index("se1Arr")
+	newContent = content[startIndex:]
+	endIndex = newContent.index(";")
+	
+	if endIndex < 20:
+		print "Couldn't find the prices for %s" % currentDate
+		return 25.0
+
+	startValues = newContent.index("(")
+	valueString = newContent[startValues+1:]
+	endValues = valueString.index(")")
+	valueString = valueString[:endValues]
+	
+	splittedString = valueString.split(",")
+
+	print splittedString
+
+	return splittedString[int(reqHour)]

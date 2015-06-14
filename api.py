@@ -29,6 +29,8 @@ class myHandler(BaseHTTPRequestHandler):
 			handleStart(self, params)
 		elif paths[1] == "stop":
 			handleStop(self)
+		elif paths[1] == "push":
+			handlePush(self, params)
 		else:
 			self.wfile.write(json.dumps({'error':'bad url'}))	
 		return
@@ -53,6 +55,15 @@ def handleGet(socket, path, params):
 		getLive(socket) 
 	if paths[0] == "settings":
 		getSettings(socket)
+
+
+#handle push
+def handlePush(socket, params):
+	if params.get('message'):
+		push.sendPush(params['message'][0])
+		sendJSON(socket, {'status':'ok'})
+	else:
+		sendJSON(socket,{'status':'failed'})
 
 #handle get history
 def getHistory(socket, params):
@@ -87,13 +98,15 @@ def setWind(socket, params):
 		fo.close()
 		sendJSON(socket, {'status':'ok'})
 		return
-	sendJSON(socket, {'status':'ok'})
+	sendJSON(socket, {'status':'failed'})
 
 def setGcmId(socket, params):
 	if params.get('id'):
 		value = params['id'][0]
 		push.addId(value)
-
+		sendJSON(socket, {'status':'ok'})
+	else:
+		sendJSON(socket, {'status':'failed'})
 
 #handles stop
 def handleStop(socket):
@@ -138,7 +151,7 @@ def handleStart(socket, params):
 		if params.get('time'):
 			data = server.startDeviceWithinTime(int(params['time'][0]), washTime, name, degree)
 			if data[2]:
-				sendJSON(socket, {'status':'ok','startAt':data[0],'price':data[1]})
+				sendJSON(socket, {'status':'ok','programInfo':server.getProgramInfo(),'price':data[1]})
 				return
 		elif params.get('readyAt'):
 			readyAt = int(params['readyAt'][0])
@@ -149,9 +162,9 @@ def handleStart(socket, params):
 			else:
 				data = server.startDeviceWithinTime(readyAt - washTime, washTime, name, degree)
 			if data[2]:
-				sendJSON(socket, {'status':'ok','startAt':data[0],'price':data[1]})
+				sendJSON(socket, {'status':'ok','programInfo':server.getProgramInfo(),'price':data[1]})
 				return
-	sendJSON(socket, {'status':'failed','startAt':-1,'price':-1})
+	sendJSON(socket, {'status':'failed','programInfo':server.getProgramInfo(),'price':-1})
 
 #sends json back to caller
 def sendJSON(socket, data):

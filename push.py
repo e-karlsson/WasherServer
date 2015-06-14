@@ -1,6 +1,7 @@
 import json
 import time
 import thread
+import requests
 
 currentTime = lambda: int(round(time.time()*1000))
 
@@ -29,8 +30,13 @@ def deviceStopped():
 
 def sendPush(message):
 	pushdata = {'data':{'message':message},'registration_ids':loadIds()}
+	header = {'content-type':'application/json', 'authorization':'key=AIzaSyByiRBVl0u1wE_wxWdIFdcSWxQRh51W3K4'}
+	url = 'https://android.googleapis.com/gcm/send'
+	r = requests.post(url, data=json.dumps(pushdata), headers=header)
+	print "Headers: ", json.dumps(header)
 	print "Sent Push: ", message
 	print "Push json: ", json.dumps(pushdata)
+	print "Push answer: ", json.loads(r.text)
 
 
 def shouldPush():
@@ -51,7 +57,7 @@ def removeId(ID):
 	ids = loadIds()
 	if ids.count(ID) != 0:
 		ids.remove(ID)
-		print "Removed %d from GCM ID's" % ID
+		print "Removed %s from GCM ID's" % ID
 	saveIds(ids)
 
 
@@ -59,14 +65,14 @@ def addId(ID):
 	ids = loadIds()
 	if ids.count(ID) == 0:
 		ids.append(ID)
-		print "Addes %d to GCM ID's" % ID
+		print "Addes %s to GCM ID's" % ID
 	saveIds(ids)
 
 def saveIds(ids):
 	data = {'ids':ids}
 	data = json.dumps(data)
 	
-	fo.open('gcm/ids', "w")
+	fo = open('gcm/ids', "w")
 	fo.write(data)
 	fo.close()
 

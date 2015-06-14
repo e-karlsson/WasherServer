@@ -1,0 +1,1 @@
+{"price": 5.0, "programInfo": {"name": "No Name", "degree": "0", "lowPrice": false, "startTime": 1432384663669, "endTime": 1432384678869, "wind": false}, "totalEnergy": 390.0, "points": [{"value": 39, "time": 1432384663714}, {"value": 39, "time": 1432384668763}, {"value": 0, "time": 1432384673816}, {"value": 0, "time": 1432384678865}]}
